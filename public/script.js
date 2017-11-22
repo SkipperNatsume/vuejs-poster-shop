@@ -1,10 +1,12 @@
+var LOAD_NUM = 10;
 new Vue({
     el: '#app',
     data: {
         total: 0,
         items: [],
         cart: [],
-        newSearch: 'Anime',
+        results: [],
+        newSearch: 'fluffy',
         lastSearch: '',
         searching: false,
         searched: false,
@@ -12,7 +14,6 @@ new Vue({
     },
     methods: {
         addItem: function (index) {
-            //this.total = 0;
             var item = this.items[index];
             var found = false;
             for (var i = 0; i < this.cart.length; i++) {
@@ -31,9 +32,6 @@ new Vue({
                 });
             }
             this.total += this.price;
-            /*for (var u = 0; u < this.cart.length; u++) {
-                this.total += this.cart[i].price * this.cart[i].quantity;
-            }*/
         },
         inc: function (product) {
             product.quantity++;
@@ -52,16 +50,30 @@ new Vue({
             }
         },
         onSubmit: function () {
-            this.items = [];
-            this.searching = true;
-            this.$http.get('/search/'
-                .concat(this.newSearch))
-                .then(function (res) {
-                    this.items = res.data;
-                    this.searching = false;
-                });
-            this.lastSearch = this.newSearch;
-            this.searched = true;
+            if (this.newSearch.length) {
+                this.items = [];
+                this.searching = true;
+                this.$http.get('/search/'
+                    .concat(this.newSearch))
+                    .then(function (res) {
+                        this.results = res.data;
+                        this.appendItems();
+                        this.searching = false;
+                    });
+                this.lastSearch = this.newSearch;
+                this.searched = true;
+            }
+        },
+        appendItems: function () {
+            if (this.items.length < this.results.length) {
+                var append = this.results.slice(this.items.length, this.items.length + LOAD_NUM);
+                this.items = this.items.concat(append);
+            }
+        }
+    },
+    computed: {
+        noMoreItems: function () {
+            return this.results.length === this.items.length && this.results.length > 0
         }
     },
     filters: {
@@ -71,5 +83,12 @@ new Vue({
     },
     mounted: function () {
         this.onSubmit();
+        var self = this;
+        var bottomElement = document.getElementById('product-list-bottom')
+        var watcher = scrollMonitor.create(bottomElement);
+        watcher.enterViewport(function () {
+            self.appendItems();
+        });
     }
 });
+
